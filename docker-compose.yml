@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # PosgresQL database
+  postgres:
+    image: postgres:13-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: taco
+      POSTGRES_USER: taco
+      POSTGRES_DB: taco
+    volumes:
+      - "pg_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taco -d taco"]
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
+      start_period: "5s"
+
+  # Redis server
+  redis:
+    image: eqalpha/keydb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "keydb-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+      start_period: "5s"
+    volumes:
+      - "redis_data:/data"
+
+  # Interactions
+  interactions:
+    image: ghcr.io/trello-talk/tacointeractions:latest
+    env_file: interactions.env
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8020:8020"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 -O- http://localhost:8020/health",
+        ]
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
+      start_period: "5s"
+
+  # Websocket
+  ws:
+    image: ghcr.io/trello-talk/tacows:latest
+    env_file: ws.env
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      interactions:
+        condition: service_healthy
+
+  # Webhook API
+  webhookapi:
+    image: ghcr.io/trello-talk/webhookapi:latest
+    env_file: api.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      interactions:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 -O- http://localhost:3000/health",
+        ]
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
+      start_period: "20s"
+
+  # Authentication
+  auth:
+    image: ghcr.io/trello-talk/tacoauth:latest
+    env_file: auth.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      interactions:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 -O- http://localhost:8001/api/health",
+        ]
+      interval: "10s"
+      timeout: "5s"
+      retries: 5
+      start_period: "20s"
+
+volumes:
+  pg_data:
+  redis_data:
