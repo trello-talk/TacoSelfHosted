@@ -1,6 +1,8 @@
 # Taco Self-Hosted
 This is an easy way to start an instance of Taco for yourself. Make sure that you change the branding for your own self-hosted instance for your own usage.
 
+> **Note** Please do not host Taco as a public listed bot. This is meant for private use for servers that need a self-hosted solution.
+
 ## Quick Start
 You will need a Trello account that the bot will control in order to use Trello's API. I recommend creating a new account for this as your API key is tied to your account. You can find your API key and OAuth secret [here](https://trello.com/app-key).
 > **Warning** You can't regenerate or change the API key or OAuth secret. Make sure these variables are secure.
